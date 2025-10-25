@@ -22,7 +22,9 @@ CREATE TABLE Supplier (
 
 CREATE TABLE Customer (
     id INT IDENTITY(1,1) PRIMARY KEY,
-    full_name NVARCHAR(150) NOT NULL,
+    first_name NVARCHAR(64) NOT NULL,
+    last_name NVARCHAR(64) NOT NULL,
+    patronym NVARCHAR(64) NOT NULL,
     address NVARCHAR(255),
     phone NVARCHAR(20)
 );
@@ -42,7 +44,6 @@ CREATE TABLE Instrument (
     name NVARCHAR(100) NOT NULL,
     year_of_production INT,
     description NVARCHAR(255),
-    quantity INT,
     price DECIMAL(10,2),
     country NVARCHAR(100),
     characteristics NVARCHAR(255),
@@ -57,6 +58,7 @@ CREATE TABLE Receipt (
     customer_id INT NOT NULL,
     warranty_id INT NOT NULL,
     sale_date DATE NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
     description NVARCHAR(255),
     CONSTRAINT fk_receipt_instrument FOREIGN KEY (instrument_id) REFERENCES Instrument(id),
     CONSTRAINT fk_receipt_customer FOREIGN KEY (customer_id) REFERENCES Customer(id),
