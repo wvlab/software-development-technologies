@@ -1,2 +1,2 @@
 -- 16: Кількість по-батькові покупців
-SELECT COUNT(middle_name) AS total_middle_names FROM Customer;
+SELECT COUNT(patronym) AS total_patronyms FROM Customer;
