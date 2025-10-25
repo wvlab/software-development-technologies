@@ -114,18 +114,15 @@ def main() -> None:
     ):
         cursor.execute(sqltext)
 
-        try:
-            if not args.show_result:
-                return
-
-            rows = cursor.fetchall()
-            for row in rows:
-                pprint(row)
-
-        except pyodbc.ProgrammingError:
-            pass
-        finally:
-            cursor.commit()
+        while True:
+            try:
+                rows = cursor.fetchall()
+                for row in rows:
+                    pprint(row)
+            except pyodbc.ProgrammingError:
+                pass
+            if not cursor.nextset():
+                break
 
 
 if __name__ == "__main__":
