@@ -34,14 +34,15 @@ def config(path: Path | None) -> Config:
         current = current.parent
 
 
-def connection(cfg: Config) -> pyodbc.Connection:
+def connection(cfg: Config, autocommit: bool = False) -> pyodbc.Connection:
     return pyodbc.connect(
         f"DRIVER={cfg.driver};"
         f"SERVER={cfg.server};"
         f"DATABASE={cfg.database};"
         f"UID={cfg.username};"
         f"PWD={cfg.password};"
-        "Encrypt=no;TrustServerCertificate=yes;"
+        "Encrypt=no;TrustServerCertificate=yes;",
+        autocommit=autocommit,
     )
 
 
@@ -80,6 +81,12 @@ def parser() -> argparse.ArgumentParser:
         action=argparse.BooleanOptionalAction,
         help="Print query results",
     )
+    parser.add_argument(
+        "--autocommit",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Run without implicit transaction (needed for CREATE DATABASE, etc.)",
+    )
     return parser
 
 
@@ -102,7 +109,7 @@ def main() -> None:
         print(sqltext, "\n")
 
     with (
-        connection(cfg) as conn,
+        connection(cfg, args.autocommit) as conn,
         conn.cursor() as cursor,
     ):
         cursor.execute(sqltext)
