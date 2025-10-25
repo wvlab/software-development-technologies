@@ -1,0 +1,1 @@
+ALTER DATABASE MusicShopDB MODIFY NAME = MusicShop;
