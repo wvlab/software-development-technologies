@@ -1,0 +1,283 @@
+\documentclass{article}
+\usepackage[top=2cm,bottom=2cm,left=3cm,right=3cm]{geometry}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{minted}
+\usepackage[most]{tcolorbox}
+\tcbuselibrary{minted,breakable}
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setdefaultlanguage{ukrainian}
+\setotherlanguages{english}
+\usepackage{Alegreya}
+\usepackage{FiraMono}
+\newfontfamily\cyrillicfont{Alegreya}
+\newfontfamily\cyrillicfontsf{Alegreya Sans}
+\newfontfamily\cyrillicfonttt{DejaVu Sans Mono}
+\usepackage{sciffi-python}
+\usepackage{sciffi-memo}
+
+\usemintedstyle{emacs}
+
+\newtcolorbox{CodeBox}[1][]{
+    breakable,
+    enhanced,
+    colback=gray!10,
+    colframe=gray!70,
+    fonttitle=\bfseries,
+    title=#1,
+    sharp corners,
+    boxrule=0.8pt,
+    top=2mm,
+    bottom=2mm,
+    left=2mm,
+    right=2mm,
+    fontupper=\footnotesize,
+}
+
+\newtcolorbox{ResultBox}[1][]{
+    breakable,
+    enhanced,
+    colback=gray!5,
+    colframe=gray!50,
+    fonttitle=\bfseries,
+    title=#1,
+    sharp corners,
+    boxrule=0.6pt,
+    top=1mm,
+    bottom=1mm,
+    left=2mm,
+    right=2mm,
+    fontupper=\footnotesize,
+}
+
+\begin{document}
+    \begin{titlepage}
+        \begin{center}
+            {\Large
+                МІНІСТЕРСТВО ОСВІТИ ТА НАУКИ УКРАЇНИ
+
+                НАЦІОНАЛЬНИЙ ТЕХНІЧНИЙ УНІВЕРСИТЕТ УКРАЇНИ
+                «КИЇВСЬКИЙ ПОЛІТЕХНІЧНИЙ ІНСТИТУТ ІМЕНІ ІГОРЯ СІКОРСЬКОГО»
+
+                ФАКУЛЬТЕТ ІНФОРМАТИКИ ТА ОБЧИСЛЮВАЛЬНОЇ ТЕХНІКИ
+
+                КАФЕДРА ІНФОРМАЦІЙНИХ СИСТЕМ ТА ТЕХНОЛОГІЙ
+            }
+
+
+            \vspace{60mm}
+            {\large
+                \textbf{ЗВІТ}
+
+                \vspace{5mm}
+
+                \textbf{До лабораторної роботи 2}
+
+                \vspace{5mm}
+
+                з дисципліни «Технології Розробки Програмного Забезпечення»
+            }
+
+            На тему «Музичний Магазин»
+
+            варіант \textnumero 14 (\textnumero 4)
+        \end{center}
+
+        \vfill
+        \hfill
+        \begin{minipage}[t]{0.35\textwidth}
+            \textbf{Виконав:}
+        \end{minipage}
+
+        \vfill
+
+        \begin{center}
+            {\bf
+                Київ
+
+                КПІ Ім. Ігоря Сікорського
+
+                2025
+            }
+        \end{center}
+    \end{titlepage}
+    \newpage
+
+    Тема: запити до даних БД.
+
+    Мета: вивчити команди формування простих запитів до бази даних (SELECT).
+
+    Навички що будуть здобуті: вміння формувати прості запити до бази даних.
+
+    \section*{Хід виконання:}
+    \begin{sciffi}{python}
+        from pathlib import Path
+        from subprocess import run, PIPE
+        from collections.abc import Sequence
+        from contextlib import contextmanager
+        
+        @contextmanager
+        def env(name: str, *args: str):
+            print(f"\\begin{{{name}}}" + "".join(args))
+            try:
+                yield
+            finally:
+                print(f"\\end{{{name}}}")
+
+        def sh(*args: str | Path) -> str:
+            return run(
+                tuple(map(str, args)),
+                stdout=PIPE,
+                stderr=PIPE,
+                text=True,
+            ).stdout
+
+        scripts = Path("./scripts/")
+
+        flow: Sequence[tuple[Path, Sequence[str]]] = [
+            (script, ("--no-echo",))
+            for script in sorted(
+                scripts.glob("*.sql"),
+                key=lambda p: int(p.stem),
+            )
+        ]
+
+        for script, args in flow:
+            source = script.read_text(encoding="utf-8")
+            output = sh("tsqlexec", *args, script)
+
+            print(f"\\subsection*{{Запит з файлу: {script.name}}}")
+            with env("CodeBox", "[SQL Source]"):
+                with env("minted", "[breaklines,linenos]", "{sql}"):
+                    print(source, end="")
+            print()
+
+            if not output.strip():
+                continue
+
+            print("Result:")
+            with env("ResultBox", "[Output]"):
+                with env("minted", "[breaklines]", "{text}"):
+                    print(output, end="")
+            print("\\vspace{5mm}")
+    \end{sciffi}
+
+    \newpage
+    \section*{Контрольні питання}
+    \begin{enumerate}[label=\arabic*., leftmargin=*]
+        \item \textbf{Які частини в команді SELECT є обов’язковими?}
+        
+        Обов'язковими частинами команди \texttt{SELECT} є власне ключове слово \texttt{SELECT}, що вказує, які стовпці потрібно повернути, та ключове слово \texttt{FROM}, що вказує на таблицю (або таблиці), з якої вибираються дані.
+        \begin{CodeBox}[Мінімальний запит]
+        \begin{minted}[breaklines]{sql}
+SELECT column1, column2
+FROM table_name;
+        \end{minted}
+        \end{CodeBox}
+        
+        \item \textbf{Яка команда використовується для виключення повторів із результату запита?}
+        
+        Для виключення дублікатів рядків з результату запиту використовується ключове слово \texttt{DISTINCT}. Воно застосовується одразу після \texttt{SELECT}.
+        \begin{CodeBox}[Приклад з DISTINCT]
+        \begin{minted}[breaklines]{sql}
+SELECT DISTINCT city
+FROM Customers;
+        \end{minted}
+        \end{CodeBox}
+        
+        \item \textbf{За допомогою якої команди створюються групи?}
+        
+        Групи створюються за допомогою речення \texttt{GROUP BY}. Воно групує рядки, що мають однакові значення у вказаних стовпцях, в один сумарний рядок. Зазвичай використовується з агрегатними функціями (\texttt{COUNT}, \texttt{SUM}, \texttt{AVG} тощо).
+        \begin{CodeBox}[Приклад з GROUP BY]
+        \begin{minted}[breaklines]{sql}
+SELECT country, COUNT(CustomerID)
+FROM Customers
+GROUP BY country;
+        \end{minted}
+        \end{CodeBox}
+        
+        \item \textbf{В якій послідовності в команді SELECT повинні розміщуватися команди ORDER BY, GROUP BY, WHERE?}
+        
+        Логічна послідовність виконання та синтаксичний порядок цих речень є таким:
+        \begin{enumerate}
+            \item \texttt{FROM} -- вказує на джерело даних.
+            \item \texttt{WHERE} -- фільтрує рядки до групування.
+            \item \texttt{GROUP BY} -- групує відфільтровані рядки.
+            \item \texttt{HAVING} -- фільтрує групи після групування.
+            \item \texttt{SELECT} -- вибирає фінальні стовпці.
+            \item \texttt{ORDER BY} -- сортує кінцевий результат.
+        \end{enumerate}
+        Отже, правильний синтаксичний порядок: \texttt{WHERE}, потім \texttt{GROUP BY}, і в кінці \texttt{ORDER BY}.
+        
+        \item \textbf{В чому різниця між командами WHERE та HAVING?}
+        
+        Основна різниця полягає в тому, на якому етапі обробки запиту вони застосовуються:
+        \begin{itemize}
+            \item \textbf{\texttt{WHERE}} фільтрує \textbf{окремі рядки} \textit{до того}, як вони будуть згруповані. Умови в \texttt{WHERE} не можуть містити агрегатних функцій.
+            \item \textbf{\texttt{HAVING}} фільтрує \textbf{групи рядків} \textit{після того}, як вони були створені за допомогою \texttt{GROUP BY}. Речення \texttt{HAVING} використовується для застосування умов до результатів агрегатних функцій.
+        \end{itemize}
+        
+        \item \textbf{Чи завжди запит, побудований з використанням команди HAVING може бути змінений на еквівалентний запит без використання цієї команди?}
+        
+        Ні, не завжди. Якщо умова фільтрації базується на результаті агрегатної функції (наприклад, \texttt{SUM(Price) > 1000} або \texttt{COUNT(*) > 5}), то таку умову неможливо перенести в речення \texttt{WHERE}. \texttt{WHERE} працює з даними на рівні окремих рядків, до агрегації, тому воно "не знає" результат \texttt{SUM} чи \texttt{COUNT}. У таких випадках використання \texttt{HAVING} є обов'язковим.
+        
+        \item \textbf{Які команди дозволяють обмежувати кількість строк що виводяться?}
+        
+        Для обмеження кількості рядків у результаті запиту використовуються різні команди залежно від діалекту SQL:
+        \begin{itemize}
+            \item \textbf{T-SQL (SQL Server):} \texttt{TOP n} або \texttt{TOP n PERCENT}
+            \begin{CodeBox}[Приклад]
+                \begin{minted}{sql}
+SELECT TOP 10 * FROM Products;
+                \end{minted}
+            \end{CodeBox}
+            \item \textbf{MySQL, PostgreSQL:} \texttt{LIMIT n}
+            \item \textbf{Oracle, Standard SQL:} \texttt{FETCH FIRST n ROWS ONLY}
+        \end{itemize}
+        
+        \item \textbf{В чому відмінність між простим запитом та складним?}
+        
+        \begin{itemize}
+            \item \textbf{Простий запит} зазвичай звертається до однієї таблиці, не використовує підзапити, об'єднання (\texttt{JOIN}), оператори \texttt{UNION}, \texttt{INTERSECT}, \texttt{EXCEPT} або складні агрегації.
+            \item \textbf{Складний запит} включає одну або декілька з таких конструкцій: об'єднання кількох таблиць (\texttt{JOIN}), підзапити (вкладені \texttt{SELECT}), операції над множинами, використання складних функцій або агрегацій з групуванням.
+        \end{itemize}
+        
+        \item \textbf{За допомогою яких ключових слів в команді SELECT виконується перевірка входження результату обчислення виразу в задану множину?}
+        
+        Для перевірки входження значення в множину використовується оператор \texttt{IN}.
+        \begin{CodeBox}[Приклад з IN]
+        \begin{minted}[breaklines]{sql}
+SELECT * FROM Customers
+WHERE Country IN ('Germany', 'France', 'UK');
+        \end{minted}
+        \end{CodeBox}
+        Також для цього можуть використовуватися оператори \texttt{ANY} та \texttt{ALL} у поєднанні з підзапитом.
+
+        \item \textbf{Яка функція використовується для обрахунку кортежів, що відповідають заданій умові?}
+        
+        Для підрахунку кількості рядків (кортежів) використовується агрегатна функція \texttt{COUNT()}.
+        \begin{itemize}
+            \item \texttt{COUNT(*)}: підраховує всі рядки в групі.
+            \item \texttt{COUNT(column\_name)}: підраховує рядки, де вказаний стовпець має значення, відмінне від \texttt{NULL}.
+        \end{itemize}
+        \begin{CodeBox}[Приклад з COUNT]
+        \begin{minted}[breaklines]{sql}
+SELECT COUNT(*) FROM Orders WHERE OrderDate >= '2023-01-01';
+        \end{minted}
+        \end{CodeBox}
+        
+        \item \textbf{Яка із команд команди SELECT накладає обмеження на відбір груп?}
+        
+        Обмеження на відбір груп, створених за допомогою \texttt{GROUP BY}, накладає речення \texttt{HAVING}.
+        
+        \item \textbf{Чи можливо використовуючи команду SELECT реалізувати операцію ділення?}
+        
+        Так, можливо реалізувати операцію реляційного ділення, хоча в SQL немає спеціального оператора для цього. Зазвичай це робиться за допомогою комбінації інших операторів, наприклад, через подвійне заперечення з \texttt{NOT EXISTS} або за допомогою \texttt{GROUP BY} та \texttt{COUNT}. Класичний приклад — "знайти студентів, які відвідують \textit{усі} курси з певного списку".
+        
+        \item \textbf{В яких випадках неможна для здійснення операції вибору використовувати команду WHERE?}
+        
+        Команду \texttt{WHERE} не можна використовувати, якщо умова фільтрації залежить від результату агрегатної функції (\texttt{SUM}, \texttt{AVG}, \texttt{MAX}, \texttt{MIN}, \texttt{COUNT}). \texttt{WHERE} виконується до обчислення агрегатів. У таких випадках необхідно використовувати \texttt{HAVING}.
+        
+    \end{enumerate}
+\end{document}
