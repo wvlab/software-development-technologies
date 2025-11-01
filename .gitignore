@@ -1,3 +1,10 @@
 *.egg-info/
 __pycache__/
 tsqlexec.toml
+*.fls
+*.log
+*.aux
+*.pdf
+*.fdb_latexmk
+_minted/
+_sciffi/

@@ -1,0 +1,414 @@
+\documentclass{article}
+\usepackage[top=2cm,bottom=2cm,left=3cm,right=3cm]{geometry}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{minted}
+\usepackage[most]{tcolorbox}
+\tcbuselibrary{minted,breakable}
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setdefaultlanguage{ukrainian}
+\setotherlanguages{english}
+\usepackage{Alegreya}
+\usepackage{FiraMono}
+\newfontfamily\cyrillicfont{Alegreya}
+\newfontfamily\cyrillicfontsf{Alegreya Sans}
+\newfontfamily\cyrillicfonttt{DejaVu Sans Mono}
+\usepackage{sciffi-python}
+\usepackage{sciffi-memo}
+
+\usemintedstyle{emacs}
+
+\newtcolorbox{CodeBox}[1][]{
+    breakable,
+    enhanced,
+    colback=gray!10,
+    colframe=gray!70,
+    fonttitle=\bfseries,
+    title=#1,
+    sharp corners,
+    boxrule=0.8pt,
+    top=2mm,
+    bottom=2mm,
+    left=2mm,
+    right=2mm,
+    fontupper=\footnotesize,
+}
+
+\newtcolorbox{ResultBox}[1][]{
+    breakable,
+    enhanced,
+    colback=gray!5,
+    colframe=gray!50,
+    fonttitle=\bfseries,
+    title=#1,
+    sharp corners,
+    boxrule=0.6pt,
+    top=1mm,
+    bottom=1mm,
+    left=2mm,
+    right=2mm,
+    fontupper=\footnotesize,
+}
+
+\begin{document}
+    \begin{titlepage}
+        \begin{center}
+            {\Large
+                МІНІСТЕРСТВО ОСВІТИ ТА НАУКИ УКРАЇНИ
+
+                НАЦІОНАЛЬНИЙ ТЕХНІЧНИЙ УНІВЕРСИТЕТ УКРАЇНИ
+                «КИЇВСЬКИЙ ПОЛІТЕХНІЧНИЙ ІНСТИТУТ ІМЕНІ ІГОРЯ СІКОРСЬКОГО»
+
+                ФАКУЛЬТЕТ ІНФОРМАТИКИ ТА ОБЧИСЛЮВАЛЬНОЇ ТЕХНІКИ
+
+                КАФЕДРА ІНФОРМАЦІЙНИХ СИСТЕМ ТА ТЕХНОЛОГІЙ
+            }
+
+
+            \vspace{60mm}
+            {\large
+                \textbf{ЗВІТ}
+
+                \vspace{5mm}
+
+                \textbf{До лабораторної роботи 1}
+
+                \vspace{5mm}
+
+                з дисципліни «Технології Розробки Програмного Забезпечення»
+            }
+
+            На тему «Музичний Магазин»
+
+            варіант \textnumero 14 (\textnumero 4)
+        \end{center}
+
+        \vfill
+        \hfill
+        \begin{minipage}[t]{0.35\textwidth}
+            \textbf{Виконав:}
+        \end{minipage}
+
+        \vfill
+
+        \begin{center}
+            {\bf
+                Київ
+
+                КПІ Ім. Ігоря Сікорського
+
+                2025
+            }
+        \end{center}
+    \end{titlepage}
+    \newpage
+
+    Тема: створення бази даних, таблиць бази даних та заповнення таблиць даними.
+
+    Мета: отримати навички використання команди створення, зміни, видалення,
+    процедур перейменування виведення відомостей про бази даних; таблиці бази
+    даних та заповнення таблиць БД даними.
+
+    Навички що будуть здобуті: вміння створювати, змінювати і заповнювати
+    даними базу даних та таблиці у ній.
+
+    \section*{Хід виконання:}
+    \begin{sciffi}{python}
+        from pathlib import Path
+        from subprocess import run, PIPE
+        from collections.abc import Sequence
+        from contextlib import contextmanager
+        
+        @contextmanager
+        def env(name: str, *args: str):
+            print(f"\\begin{{{name}}}" + "".join(args))
+            try:
+                yield
+            finally:
+                print(f"\\end{{{name}}}")
+
+        def sh(*args: str | Path) -> str:
+            return run(
+                tuple(map(str, args)),
+                stdout=PIPE,
+                stderr=PIPE,
+                text=True,
+            ).stdout
+
+        scripts = Path("./scripts/")
+        flow: Sequence[tuple[Path, Sequence[str]]] = (
+            (scripts / "db.sql", ("--autocommit", "--no-echo")),
+            (scripts / "renamedb.sql", ("--no-echo",)),
+            (scripts / "spaceused.sql", ("--no-echo",)),
+            (scripts / "schema.sql", ("--no-echo",)),
+            (scripts / "discount.sql", ("--no-echo",)),
+            (scripts / "seed.sql", ("--no-echo",)),
+            (scripts / "select.sql", ("--no-echo",)),
+        )
+
+        for script, args in flow:
+            source = script.read_text(encoding="utf-8")
+            output = sh("tsqlexec", *args, script)
+
+            print(f"Script path: {script}")
+            with env("CodeBox", "[SQL Source]"):
+                with env("minted", "[breaklines,linenos]", "{sql}"):
+                    print(source, end="")
+            print()
+
+            if not output.strip():
+                continue
+
+            print("Result:")
+            with env("ResultBox", "[Output]"):
+                with env("minted", "[breaklines]", "{text}"):
+                    print(output, end="")
+    \end{sciffi}
+
+    \newpage
+    \section*{Контрольні питання}
+    \begin{enumerate}[label=\arabic*., leftmargin=*]
+        \item \textbf{Пріоритет виконання операторів.}
+
+        Пріоритет операторів в SQL визначає порядок, у якому обчислюються
+        вирази. Оператори з вищим пріоритетом виконуються першими. Якщо
+        оператори мають однаковий пріоритет, вони виконуються зліва направо.
+        Пріоритет від найвищого до найнижчого:
+        \begin{enumerate}
+            \item \texttt{()} — дужки для зміни пріоритету.
+            \item \texttt{*}, \texttt{/}, \texttt{\%} — арифметичні оператори множення, ділення, остача від ділення.
+            \item \texttt{+}, \texttt{-} — арифметичні оператори додавання, віднімання.
+            \item Оператори порівняння: \texttt{=}, \texttt{>}, \texttt{<}, \texttt{>=}, \texttt{<=}, \texttt{<>}, \texttt{!=}.
+            \item \texttt{NOT} — логічне заперечення.
+            \item \texttt{AND} — логічне "І".
+            \item \texttt{OR} — логічне "АБО".
+        \end{enumerate}
+
+        \item \textbf{Правила присвоювання імен об’єктам бази даних.}
+
+        Імена об'єктів (баз даних, таблиць, стовпців) називаються
+        ідентифікаторами. Існують такі правила:
+        \begin{itemize}
+            \item \textbf{Довжина:} Зазвичай до 128 символів (у SQL Server).
+            \item \textbf{Перший символ:} Має бути літера, символ підкреслення \texttt{\_}, \texttt{@} (для локальних змінних) або \texttt{\#} (для тимчасових таблиць).
+            \item \textbf{Наступні символи:} Можуть бути літери, цифри, символи \texttt{@}, \texttt{\$}, \texttt{\#}, \texttt{\_}.
+            \item \textbf{Пробіли та спецсимволи:} Якщо ім'я містить пробіли або зарезервовані слова, його слід брати у подвійні лапки \texttt{" "} або квадратні дужки \texttt{[]}.
+            \item \textbf{Унікальність:} Імена таблиць мають бути унікальними в межах схеми, а імена стовпців — унікальними в межах таблиці.
+        \end{itemize}
+        
+        \item \textbf{Синтаксис команди створення бази даних.}
+
+        Команда \texttt{CREATE DATABASE} використовується для створення нової бази даних.
+        \begin{CodeBox}[Базовий синтаксис]
+        \begin{minted}[breaklines]{sql}
+CREATE DATABASE database_name;
+        \end{minted}
+        \end{CodeBox}
+        
+        \item \textbf{Як можна отримати відомості про базу даних?}
+
+        Для цього існують системні інструменти:
+        \begin{itemize}
+            \item Системна процедура \texttt{sp\_helpdb} (T-SQL):
+            \begin{CodeBox}[SQL]
+            \begin{minted}[breaklines]{sql}
+EXEC sp_helpdb 'database_name';
+            \end{minted}
+            \end{CodeBox}
+            \item Системні представлення (Catalog Views):
+            \begin{CodeBox}[SQL]
+            \begin{minted}[breaklines]{sql}
+SELECT * FROM sys.databases WHERE name = 'database_name';
+            \end{minted}
+            \end{CodeBox}
+        \end{itemize}
+
+        \item \textbf{Як застосовується команда ALTER DATABASE?}
+
+        Команда \texttt{ALTER DATABASE} використовується для зміни властивостей існуючої бази даних, наприклад, для перейменування, додавання файлів або зміни параметрів.
+        \begin{CodeBox}[Приклад зміни імені]
+        \begin{minted}[breaklines]{sql}
+ALTER DATABASE OldDatabaseName MODIFY NAME = NewDatabaseName;
+        \end{minted}
+        \end{CodeBox}
+        \begin{CodeBox}[Приклад додавання файлу]
+        \begin{minted}[breaklines]{sql}
+ALTER DATABASE MyDatabase ADD FILE (NAME = 'NewDataFile', FILENAME = 'C:\path\to\file.ndf');
+        \end{minted}
+        \end{CodeBox}
+
+        \item \textbf{Як можна перейменувати базу даних?}
+
+        Перейменувати базу даних можна за допомогою команди \texttt{ALTER DATABASE} або застарілої процедури \texttt{sp\_renamedb}. Сучасний спосіб є кращим.
+        \begin{CodeBox}[Перейменування бази даних]
+        \begin{minted}[breaklines]{sql}
+ALTER DATABASE OldName MODIFY NAME = NewName;
+        \end{minted}
+        \end{CodeBox}
+        
+        \item \textbf{Синтаксис команди видалення бази даних.}
+
+        Команда \texttt{DROP DATABASE} видаляє базу даних та всі її об’єкти назавжди.
+        \begin{CodeBox}[Синтаксис]
+        \begin{minted}[breaklines]{sql}
+DROP DATABASE database_name;
+        \end{minted}
+        \end{CodeBox}
+        Ця операція є незворотною, тому її слід використовувати з обережністю.
+        
+        \item \textbf{Синтаксис команди створення таблиці бази даних.}
+
+        Команда \texttt{CREATE TABLE} створює нову таблицю у поточній базі даних.
+        \begin{CodeBox}[Синтаксис]
+        \begin{minted}[breaklines]{sql}
+CREATE TABLE table_name (
+    column1_name data_type [constraints],
+    column2_name data_type [constraints],
+    ...
+    [table_constraints]
+);
+        \end{minted}
+        \end{CodeBox}
+        
+        \item \textbf{Поняття та синтаксис Primary key та Foreign key.}
+
+        \begin{itemize}
+            \item \textbf{Primary Key (первинний ключ):} Це стовпець або набір стовпців, який унікально ідентифікує кожен запис у таблиці. Значення в ньому не можуть бути \texttt{NULL} і не можуть повторюватися.
+            \begin{CodeBox}[Синтаксис Primary Key]
+            \begin{minted}[breaklines]{sql}
+CREATE TABLE Students (
+    StudentID INT PRIMARY KEY,
+    FirstName VARCHAR(50) NOT NULL
+);
+            \end{minted}
+            \end{CodeBox}
+            
+            \item \textbf{Foreign Key (зовнішній ключ):} Це стовпець у одній таблиці, який посилається на первинний ключ в іншій таблиці. Він створює зв'язок між таблицями і забезпечує посилальну цілісність.
+            \begin{CodeBox}[Синтаксис Foreign Key]
+            \begin{minted}[breaklines]{sql}
+CREATE TABLE Orders (
+    OrderID INT PRIMARY KEY,
+    StudentID INT,
+    FOREIGN KEY (StudentID) REFERENCES Students(StudentID)
+);
+            \end{minted}
+            \end{CodeBox}
+        \end{itemize}
+
+        \item \textbf{Синтаксис та правила застосування IDENTITY.}
+
+        \texttt{IDENTITY} — це властивість стовпця (в T-SQL), яка автоматично генерує послідовні числові значення при додаванні нових рядків.
+        \begin{CodeBox}[Синтаксис]
+        \begin{minted}[breaklines]{sql}
+IDENTITY(seed, increment)
+-- seed - початкове значення, increment - крок
+        \end{minted}
+        \end{CodeBox}
+        Правила: може бути лише один \texttt{IDENTITY}-стовпець на таблицю; тип даних має бути числовим; при вставці даних значення для цього поля вказувати не потрібно.
+
+        \item \textbf{Як можна отримати відомості про таблицю бази даних?}
+
+        Використовується системна процедура \texttt{sp\_help}.
+        \begin{CodeBox}[SQL]
+        \begin{minted}[breaklines]{sql}
+EXEC sp_help 'table_name';
+        \end{minted}
+        \end{CodeBox}
+        Вона показує структуру таблиці, стовпці, їх типи даних, індекси та обмеження.
+
+        \item \textbf{Як застосовується команда ALTER TABLE?}
+
+        Команда \texttt{ALTER TABLE} дозволяє змінювати структуру існуючої таблиці.
+        \begin{itemize}
+            \item \textbf{Додати стовпець:} \texttt{ALTER TABLE table\_name ADD column\_name data\_type;}
+            \item \textbf{Видалити стовпець:} \texttt{ALTER TABLE table\_name DROP COLUMN column\_name;}
+            \item \textbf{Змінити тип даних:} \texttt{ALTER TABLE table\_name ALTER COLUMN column\_name new\_data\_type;}
+        \end{itemize}
+        
+        \item \textbf{Як можна перейменувати таблицю бази даних?}
+
+        У T-SQL для цього використовується системна процедура \texttt{sp\_rename}.
+        \begin{CodeBox}[Синтаксис]
+        \begin{minted}[breaklines]{sql}
+EXEC sp_rename 'OldTableName', 'NewTableName';
+        \end{minted}
+        \end{CodeBox}
+        
+        \item \textbf{Синтаксис команди видалення таблиці бази даних.}
+
+        Команда \texttt{DROP TABLE} повністю видаляє таблицю, її структуру та дані.
+        \begin{CodeBox}[Синтаксис]
+        \begin{minted}[breaklines]{sql}
+DROP TABLE table_name;
+        \end{minted}
+        \end{CodeBox}
+        
+        \item \textbf{Синтаксис команди заповнення таблиці даними.}
+
+        Для додавання нових рядків у таблицю використовується команда \texttt{INSERT INTO}.
+        \begin{CodeBox}[Синтаксис]
+        \begin{minted}[breaklines]{sql}
+-- Вставка значень для всіх стовпців
+INSERT INTO table_name VALUES (value1, value2, ...);
+
+-- Вставка значень для конкретних стовпців
+INSERT INTO table_name (column1, column2) VALUES (value1, value2);
+        \end{minted}
+        \end{CodeBox}
+        
+        \item \textbf{Порядок заповнення таблиць даними.}
+
+        Якщо таблиці пов'язані зовнішніми ключами, їх потрібно заповнювати у правильному порядку:
+        \begin{enumerate}
+            \item Спочатку заповнюються "головні" (батьківські) таблиці, на які посилаються зовнішні ключі.
+            \item Потім заповнюються "дочірні" (залежні) таблиці.
+        \end{enumerate}
+        Це необхідно для дотримання посилальної цілісності.
+        
+        \item \textbf{Правила заповнення основними типами даних (Int, Char, Float, Date).}
+
+        \begin{itemize}
+            \item \textbf{Int, Float (числові):} Записуються без лапок. Наприклад: \texttt{123}, \texttt{199.99}.
+            \item \textbf{Char, VarChar (символьні):} Значення беруться в одинарні лапки. Наприклад: \texttt{'Київ'}.
+            \item \textbf{Date, DateTime (дата/час):} Значення беруться в одинарні лапки у форматі \texttt{'YYYY-MM-DD'}. Наприклад: \texttt{'2023-10-27'}.
+        \end{itemize}
+        
+        \item \textbf{Різниця між заповненням всіх полів та вибіркової кількості полів таблиці.}
+
+        \begin{itemize}
+            \item \textbf{Заповнення всіх полів (\texttt{INSERT ... VALUES ...}):}
+                Вимагає надання значень для кожного стовпця в тому
+                порядку, в якому вони визначені в таблиці. Цей підхід є крихким
+                до змін структури таблиці.
+
+            \item \textbf{Заповнення вибіркових полів (\texttt{INSERT ... (col1) VALUES ...}):}
+                Ви чітко вказуєте, в які стовпці
+                вставляєте дані. Це надійніший та більш читабельний підхід,
+                оскільки він не залежить від порядку стовпців.
+        \end{itemize}
+        
+        \item \textbf{Правила заповнення вибіркової кількості полів таблиці.}
+
+        \begin{enumerate}
+            \item Обов'язково вказувати список стовпців у дужках після імені таблиці.
+            \item Список значень у \texttt{VALUES} повинен відповідати списку стовпців за кількістю та порядком.
+            \item Стовпці, які не були вказані, повинні дозволяти \texttt{NULL} або мати значення за замовчуванням (\texttt{DEFAULT}).
+        \end{enumerate}
+        
+        \item \textbf{Правила заповнення даними таблиць, які мають автоінкрементне поле.}
+
+        Основне правило: при звичайній вставці даних (\texttt{INSERT}) ви
+        \textbf{не вказуєте} автоінкрементний стовпець у списку стовпців і
+        \textbf{не передаєте} для нього значення. СКБД згенерує його
+        автоматично.
+
+        \begin{CodeBox}[Приклад]
+        \begin{minted}[breaklines]{sql}
+-- Таблиця: Products (ProductID INT IDENTITY, ProductName VARCHAR)
+INSERT INTO Products (ProductName) VALUES ('Ноутбук'); 
+-- ProductID буде згенеровано автоматично
+        \end{minted}
+        \end{CodeBox}
+    \end{enumerate}
+\end{document}
