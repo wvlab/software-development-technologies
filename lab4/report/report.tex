@@ -1,0 +1,269 @@
+\documentclass{article}
+\usepackage[top=2cm,bottom=2cm,left=3cm,right=3cm]{geometry}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{minted}
+\usepackage[most]{tcolorbox}
+\tcbuselibrary{minted,breakable}
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setdefaultlanguage{ukrainian}
+\setotherlanguages{english}
+\usepackage{Alegreya}
+\usepackage{FiraMono}
+\newfontfamily\cyrillicfont{Alegreya}
+\newfontfamily\cyrillicfontsf{Alegreya Sans}
+\newfontfamily\cyrillicfonttt{DejaVu Sans Mono}
+\usepackage{sciffi-python}
+\usepackage{sciffi-memo}
+
+\usemintedstyle{emacs}
+
+\newtcolorbox{CodeBox}[1][]{
+    breakable,
+    enhanced,
+    colback=gray!10,
+    colframe=gray!70,
+    fonttitle=\bfseries,
+    title=#1,
+    sharp corners,
+    boxrule=0.8pt,
+    top=2mm,
+    bottom=2mm,
+    left=2mm,
+    right=2mm,
+    fontupper=\footnotesize,
+}
+
+\newtcolorbox{ResultBox}[1][]{
+    breakable,
+    enhanced,
+    colback=gray!5,
+    colframe=gray!50,
+    fonttitle=\bfseries,
+    title=#1,
+    sharp corners,
+    boxrule=0.6pt,
+    top=1mm,
+    bottom=1mm,
+    left=2mm,
+    right=2mm,
+    fontupper=\footnotesize,
+}
+
+\begin{document}
+    \begin{titlepage}
+        \begin{center}
+            {\Large
+                МІНІСТЕРСТВО ОСВІТИ ТА НАУКИ УКРАЇНИ
+
+                НАЦІОНАЛЬНИЙ ТЕХНІЧНИЙ УНІВЕРСИТЕТ УКРАЇНИ
+                «КИЇВСЬКИЙ ПОЛІТЕХНІЧНИЙ ІНСТИТУТ ІМЕНІ ІГОРЯ СІКОРСЬКОГО»
+
+                ФАКУЛЬТЕТ ІНФОРМАТИКИ ТА ОБЧИСЛЮВАЛЬНОЇ ТЕХНІКИ
+
+                КАФЕДРА ІНФОРМАЦІЙНИХ СИСТЕМ ТА ТЕХНОЛОГІЙ
+            }
+
+
+            \vspace{60mm}
+            {\large
+                \textbf{ЗВІТ}
+
+                \vspace{5mm}
+
+                \textbf{До лабораторної роботи 4}
+
+                \vspace{5mm}
+
+                з дисципліни «Технології Розробки Програмного Забезпечення»
+            }
+
+            На тему «Музичний Магазин»
+
+            варіант \textnumero 14 (\textnumero 4)
+        \end{center}
+
+        \vfill
+        \hfill
+        \begin{minipage}[t]{0.35\textwidth}
+            \textbf{Виконав:}
+        \end{minipage}
+
+        \vfill
+
+        \begin{center}
+            {\bf
+                Київ
+
+                КПІ Ім. Ігоря Сікорського
+
+                2025
+            }
+        \end{center}
+    \end{titlepage}
+    \newpage
+
+    Тема: підзапити до даних БД.
+
+    Мета: вивчити команди формування підзапитів до бази даних.
+
+    Навички що будуть здобуті: вміння формувати складні запити до бази даних, що складаються з одного або декількох підзапитів.
+
+    \section*{Хід виконання:}
+    \begin{sciffi}{python}
+        from pathlib import Path
+        from subprocess import run, PIPE
+        from collections.abc import Sequence
+        from contextlib import contextmanager
+        
+        @contextmanager
+        def env(name: str, *args: str):
+            print(f"\\begin{{{name}}}" + "".join(args))
+            try:
+                yield
+            finally:
+                print(f"\\end{{{name}}}")
+
+        def sh(*args: str | Path) -> str:
+            return run(
+                tuple(map(str, args)),
+                stdout=PIPE,
+                stderr=PIPE,
+                text=True,
+            ).stdout
+
+        scripts = Path("./scripts/")
+        # Find all .sql files and sort them numerically by their filename
+        sql_files = sorted(scripts.glob("*.sql"), key=lambda p: int(p.stem))
+
+        flow: Sequence[tuple[Path, Sequence[str]]] = [
+            (script, ("--no-echo",)) for script in sql_files
+        ]
+
+        for script, args in flow:
+            source = script.read_text(encoding="utf-8")
+            output = sh("tsqlexec", *args, script)
+
+            print(f"\\subsection*{{Запит з файлу: {script.name}}}")
+            with env("CodeBox", "[SQL Source]"):
+                with env("minted", "[breaklines,linenos]", "{sql}"):
+                    print(source, end="")
+            print()
+
+            if not output.strip():
+                continue
+
+            print("Result:")
+            with env("ResultBox", "[Output]"):
+                with env("minted", "[breaklines]", "{text}"):
+                    print(output, end="")
+            print("\\vspace{5mm}")
+
+    \end{sciffi}
+
+    \newpage
+    \section*{Контрольні питання}
+    \begin{enumerate}[label=\arabic*., leftmargin=*]
+        \item \textbf{Що таке підзапит?}
+        
+        Підзапит (subquery) — це запит \texttt{SELECT}, вкладений всередину іншого SQL-запиту (головного запиту). Результат підзапиту використовується головним запитом для виконання певної операції (фільтрації, порівняння, як джерело даних тощо).
+
+        \item \textbf{В яких командах SQL можуть бути використані підзапити?}
+        
+        Підзапити можуть використовуватися в основних командах DML (Data Manipulation Language):
+        \begin{itemize}
+            \item \texttt{SELECT} (у пропозиціях \texttt{SELECT}, \texttt{FROM}, \texttt{WHERE}, \texttt{HAVING})
+            \item \texttt{INSERT} (для надання значень для вставки)
+            \item \texttt{UPDATE} (у пропозиціях \texttt{SET} або \texttt{WHERE})
+            \item \texttt{DELETE} (у пропозиції \texttt{WHERE})
+        \end{itemize}
+
+        \item \textbf{Який порядок виконання підзапита?}
+        
+        Зазвичай, підзапит виконується \textbf{першим}, а його результат передається зовнішньому (головному) запиту для подальшої обробки. Це стосується некорельованих підзапитів. У випадку корельованих підзапитів, внутрішній запит виконується багаторазово — для кожного рядка, що обробляється зовнішнім запитом.
+
+        \item \textbf{В яких випадках підзапити можуть передати декілька рядків в головну пропозицію?}
+        
+        Підзапити повертають декілька рядків, коли вони використовуються з операторами, призначеними для роботи з наборами даних, такими як \texttt{IN}, \texttt{NOT IN}, \texttt{ANY}, \texttt{ALL}, \texttt{EXISTS}. Також підзапит у пропозиції \texttt{FROM} (похідна таблиця) за своєю природою повертає набір рядків.
+
+        \item \textbf{Де розміщується підзапит в логічному виразі пропозиції основного запита: до оператора порівняння, після оператора порівняння?}
+        
+        Підзапит завжди розміщується \textbf{після} оператора порівняння.
+        \begin{CodeBox}[Приклад]
+        \begin{minted}[breaklines]{sql}
+WHERE column_name > (SELECT MIN(column) FROM ...)
+        \end{minted}
+        \end{CodeBox}
+
+        \item \textbf{Які пропозиції допустимі для основного запита не можуть бути використані в підзапиті?}
+        
+        Найчастіше в підзапиті не можна використовувати пропозицію \texttt{ORDER BY}. Сортування результату підзапиту не має сенсу, оскільки кінцевий порядок рядків визначає головний запит. Винятком є випадки, коли \texttt{ORDER BY} використовується разом з командами обмеження кількості рядків (\texttt{TOP}, \texttt{LIMIT}, \texttt{FETCH}).
+
+        \item \textbf{Які існують типи підзапитів?}
+        
+        Підзапити можна класифікувати за кількома критеріями:
+        \begin{itemize}
+            \item \textbf{За результатом, що повертається:}
+            \begin{itemize}
+                \item \textit{Скалярний (однорядковий):} повертає один рядок і один стовпець.
+                \item \textit{Багаторядковий:} повертає декілька рядків, але один стовпець.
+                \item \textit{Табличний (багатостовпцевий):} повертає декілька рядків і декілька стовпців (використовується у \texttt{FROM}).
+            \end{itemize}
+            \item \textbf{За залежністю від зовнішнього запиту:}
+            \begin{itemize}
+                \item \textit{Некорельований:} може бути виконаний незалежно від зовнішнього запиту.
+                \item \textit{Корельований:} залежить від значень у рядках зовнішнього запиту.
+            \end{itemize}
+        \end{itemize}
+
+        \item \textbf{В яких пропозиціях SELECT можуть бути використані підзапити?}
+        
+        У команді \texttt{SELECT} підзапити можуть бути використані в таких пропозиціях:
+        \begin{itemize}
+            \item \texttt{SELECT list} (скалярний підзапит для обчислення значення стовпця).
+            \item \texttt{FROM} (табличний підзапит, що створює похідну таблицю).
+            \item \texttt{WHERE} (для фільтрації рядків).
+            \item \texttt{HAVING} (для фільтрації груп).
+        \end{itemize}
+
+        \item \textbf{Які пропозиції SELECT неможна використовувати в підзапитах?}
+        
+        Як згадувалося раніше, пропозицію \texttt{ORDER BY} зазвичай не можна використовувати в підзапитах. Також деякі СУБД можуть накладати обмеження на використання \texttt{INTO} (для створення нової таблиці) всередині підзапиту.
+
+        \item \textbf{Де повинен знаходитись підзапит?}
+        
+        Синтаксично підзапит завжди повинен бути взятий у \textbf{круглі дужки} \texttt{()}.
+
+        \item \textbf{Які оператори порівняння працюють с декількома рядками?}
+        
+        Оператори, що працюють з набором значень (декількома рядками), які повертає підзапит:
+        \begin{itemize}
+            \item \texttt{IN} — дорівнює будь-якому значенню зі списку.
+            \item \texttt{NOT IN} — не дорівнює жодному значенню зі списку.
+            \item \texttt{ANY} / \texttt{SOME} — порівнює значення з кожним значенням зі списку (використовується з \texttt{=}, \texttt{>}, \texttt{<} і т.д.).
+            \item \texttt{ALL} — порівнює значення з усіма значеннями зі списку.
+        \end{itemize}
+
+        \item \textbf{Які оператори порівняння працюють тільки з одним рядком?}
+        
+        Стандартні оператори порівняння, які очікують, що підзапит поверне одне скалярне значення:
+        \texttt{=}, \texttt{<>} (\texttt{!=}), \texttt{>}, \texttt{<}, \texttt{>=}, \texttt{<=}.
+
+        \item \textbf{Які підзапити називаються однорядковими?}
+        
+        Однорядковими (скалярними) називаються підзапити, які гарантовано повертають не більше одного рядка та одного стовпця.
+
+        \item \textbf{Які підзапити називаються квантифікованими?}
+        
+        Квантифікованими називаються підзапити, що використовуються з операторами-кванторами \texttt{ANY}, \texttt{SOME} або \texttt{ALL}. Ці оператори дозволяють порівняти значення з набором значень, які повертає підзапит.
+
+        \item \textbf{В чому різниця підзапитів у FROM та WHERE?}
+        
+        Основна різниця полягає в їхній ролі:
+        \begin{itemize}
+            \item \textbf{Підзапит у \texttt{WHERE} (або \texttt{HAVING}):} Використовується для \textbf{фільтрації}. Він повертає значення або набір значень, які використовуються в умові для відбору рядків з таблиці, вказаної у \texttt{FROM} основного запиту.
+            \item \textbf{Підзапит у \texttt{FROM}:} Використовується як \textbf{джерело даних}. Він створює тимчасову, віртуальну таблицю (похідну таблицю), з якої зовнішній запит вибирає дані. До цієї таблиці можна застосовувати \texttt{JOIN}, \texttt{WHERE} та інші операції, як до звичайної таблиці.
+        \end{itemize}
+    \end{enumerate}
+\end{document}
