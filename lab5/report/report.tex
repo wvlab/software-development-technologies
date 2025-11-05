@@ -1,0 +1,352 @@
+\documentclass{article}
+\usepackage[top=2cm,bottom=2cm,left=3cm,right=3cm]{geometry}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{minted}
+\usepackage[most]{tcolorbox}
+\tcbuselibrary{minted,breakable}
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setdefaultlanguage{ukrainian}
+\setotherlanguages{english}
+\usepackage{Alegreya}
+\usepackage{FiraMono}
+\newfontfamily\cyrillicfont{Alegreya}
+\newfontfamily\cyrillicfontsf{Alegreya Sans}
+\newfontfamily\cyrillicfonttt{DejaVu Sans Mono}
+\usepackage{sciffi-python}
+\usepackage{sciffi-memo}
+
+\usemintedstyle{emacs}
+
+\newtcolorbox{CodeBox}[1][]{
+    breakable,
+    enhanced,
+    colback=gray!10,
+    colframe=gray!70,
+    fonttitle=\bfseries,
+    title=#1,
+    sharp corners,
+    boxrule=0.8pt,
+    top=2mm,
+    bottom=2mm,
+    left=2mm,
+    right=2mm,
+    fontupper=\footnotesize,
+}
+
+\newtcolorbox{ResultBox}[1][]{
+    breakable,
+    enhanced,
+    colback=gray!5,
+    colframe=gray!50,
+    fonttitle=\bfseries,
+    title=#1,
+    sharp corners,
+    boxrule=0.6pt,
+    top=1mm,
+    bottom=1mm,
+    left=2mm,
+    right=2mm,
+    fontupper=\footnotesize,
+}
+
+\begin{document}
+    \begin{titlepage}
+        \begin{center}
+            {\Large
+                МІНІСТЕРСТВО ОСВІТИ ТА НАУКИ УКРАЇНИ
+
+                НАЦІОНАЛЬНИЙ ТЕХНІЧНИЙ УНІВЕРСИТЕТ УКРАЇНИ
+                «КИЇВСЬКИЙ ПОЛІТЕХНІЧНИЙ ІНСТИТУТ ІМЕНІ ІГОРЯ СІКОРСЬКОГО»
+
+                ФАКУЛЬТЕТ ІНФОРМАТИКИ ТА ОБЧИСЛЮВАЛЬНОЇ ТЕХНІКИ
+
+                КАФЕДРА ІНФОРМАЦІЙНИХ СИСТЕМ ТА ТЕХНОЛОГІЙ
+            }
+
+
+            \vspace{60mm}
+            {\large
+                \textbf{ЗВІТ}
+
+                \vspace{5mm}
+
+                \textbf{До комп'ютерного практикуму №5}
+
+                \vspace{5mm}
+
+                з дисципліни «Технології Розробки Програмного Забезпечення»
+            }
+
+            На тему «Операції об’єднання результатів декількох запитів. Модифікація даних.»
+
+            варіант \textnumero 14 (\textnumero 4)
+        \end{center}
+
+        \vfill
+        \hfill
+        \begin{minipage}[t]{0.35\textwidth}
+            \textbf{Виконав:}
+
+            Носилевський В. А., ІК-32
+        \end{minipage}
+
+        \vfill
+
+        \begin{center}
+            {\bf
+                Київ
+
+                КПІ Ім. Ігоря Сікорського
+
+                2025
+            }
+        \end{center}
+    \end{titlepage}
+    \newpage
+
+    \textbf{Тема:} операції об’єднання результатів декількох запитів. Модифікація даних.
+
+    \textbf{Мета:} вивчити операції об’єднання результатів декількох запитів в одну таблицю (UNION, INTERSECT, EXCEPT) та команди модифікації даних (INSERT, UPDATE, DELETE).
+
+    \textbf{Навички що будуть здобуті:} вміння об’єднувати запити до бази даних, використовувати копіювання, оновлення та видалення даних.
+    
+    \section*{Хід виконання роботи}
+    \begin{sciffi}{python}
+        from pathlib import Path
+        from subprocess import run, PIPE
+        from collections.abc import Sequence
+        from contextlib import contextmanager
+        
+        @contextmanager
+        def env(name: str, *args: str):
+            print(f"\\begin{{{name}}}" + "".join(args))
+            try:
+                yield
+            finally:
+                print(f"\\end{{{name}}}")
+
+        def sh(*args: str | Path) -> str:
+            return run(
+                tuple(map(str, args)),
+                stdout=PIPE,
+                stderr=PIPE,
+                text=True,
+            ).stdout
+
+        scripts = Path("./scripts/")
+
+        flow: Sequence[tuple[Path, Sequence[str]]] = [
+            (script, ("--no-echo",))
+            for script in sorted(
+                scripts.glob("*.sql"),
+                key=lambda p: int(p.stem),
+            )
+        ]
+
+        for script, args in flow:
+            source = script.read_text(encoding="utf-8")
+            output = sh("tsqlexec", *args, script)
+
+            print(f"\\subsection*{{Запит з файлу: {script.name}}}")
+            with env("CodeBox", "[SQL Source]"):
+                with env("minted", "[breaklines,linenos]", "{sql}"):
+                    print(source, end="")
+            print()
+
+            if not output.strip():
+                continue
+
+            print("Result:")
+            with env("ResultBox", "[Output]"):
+                with env("minted", "[breaklines]", "{text}"):
+                    print(output, end="")
+            print("\\vspace{5mm}")
+    \end{sciffi}
+
+    \newpage
+    \section*{Контрольні питання}
+    \begin{enumerate}[label=\arabic*., leftmargin=*]
+        \item \textbf{Які вимоги пред’являються до таблиць, над якими виконуються оператори UNION?}
+        
+        Для успішного виконання оператора \texttt{UNION} (а також \texttt{INTERSECT} та \texttt{EXCEPT}) всі запити \texttt{SELECT}, що об'єднуються, повинні відповідати таким вимогам:
+        \begin{itemize}
+            \item \textbf{Кількість стовпців:} Усі запити повинні повертати однакову кількість стовпців.
+            \item \textbf{Сумісність типів даних:} Типи даних відповідних стовпців (за їх порядком) у кожному запиті мають бути сумісними. Це не означає, що вони мають бути ідентичними, але СКБД повинна мати можливість неявно перетворити їх до одного спільного типу.
+        \end{itemize}
+        Назви стовпців у результуючій таблиці беруться з першого запиту \texttt{SELECT}.
+
+        \item \textbf{Поняття та синтаксис UNION?}
+        
+        Оператор \texttt{UNION} використовується для об'єднання результатів двох або більше запитів \texttt{SELECT} в один результуючий набір. За замовчуванням, \texttt{UNION} видаляє всі дублікати рядків з кінцевого результату.
+        \begin{CodeBox}[Синтаксис UNION]
+        \begin{minted}[breaklines]{sql}
+SELECT column1, column2 FROM table1
+UNION
+SELECT columnA, columnB FROM table2;
+        \end{minted}
+        \end{CodeBox}
+        
+        \item \textbf{В чому різниця між UNION та UNION ALL?}
+        
+        Основна різниця полягає у роботі з дублікатами:
+        \begin{itemize}
+            \item \textbf{UNION:} Видаляє дублікати. Для цього СКБД повинна виконати додаткову роботу (сортування або хешування), що робить цю операцію повільнішою.
+            \item \textbf{UNION ALL:} Включає всі рядки з усіх запитів, включаючи дублікати. Ця операція є значно швидшою, оскільки не потребує перевірки на унікальність.
+        \end{itemize}
+
+        \item \textbf{Поняття та синтаксис INTERSECT?}
+        
+        Оператор \texttt{INTERSECT} повертає тільки ті унікальні рядки, які є спільними для обох запитів \texttt{SELECT} (тобто присутні в результатах і першого, і другого запиту).
+        \begin{CodeBox}[Синтаксис INTERSECT]
+        \begin{minted}[breaklines]{sql}
+SELECT column_name(s) FROM table1
+INTERSECT
+SELECT column_name(s) FROM table2;
+        \end{minted}
+        \end{CodeBox}
+
+        \item \textbf{Поняття та синтаксис EXCEPT?}
+        
+        Оператор \texttt{EXCEPT} повертає унікальні рядки з результату першого запиту, яких немає в результаті другого запиту. Він виконує "віднімання" одного набору результатів від іншого.
+        \begin{CodeBox}[Синтаксис EXCEPT]
+        \begin{minted}[breaklines]{sql}
+SELECT column_name(s) FROM table1
+EXCEPT
+SELECT column_name(s) FROM table2;
+        \end{minted}
+        \end{CodeBox}
+        
+        \item \textbf{Поняття та синтаксис INSERT?}
+        
+        Команда \texttt{INSERT INTO} використовується для додавання одного або кількох нових рядків до таблиці.
+        \begin{CodeBox}[Синтаксис INSERT]
+        \begin{minted}[breaklines]{sql}
+-- Варіант 1: Вказуються стовпці (рекомендовано)
+INSERT INTO table_name (column1, column2) 
+VALUES (value1, value2);
+
+-- Варіант 2: Стовпці не вказуються (потрібно надати значення для всіх полів у правильному порядку)
+INSERT INTO table_name 
+VALUES (value1, value2, value3, ...);
+        \end{minted}
+        \end{CodeBox}
+
+        \item \textbf{INSERT INTO для таблиць з однаковою структурою в одній БД?}
+        
+        Можна скопіювати всі дані з однієї таблиці в іншу за допомогою конструкції \texttt{INSERT INTO ... SELECT}.
+        \begin{CodeBox}[Копіювання даних]
+        \begin{minted}[breaklines]{sql}
+INSERT INTO TargetTable
+SELECT * FROM SourceTable
+WHERE condition; -- Умова WHERE не є обов'язковою
+        \end{minted}
+        \end{CodeBox}
+
+        \item \textbf{INSERT INTO для таблиць з різною структурою в одній БД?}
+        
+        Якщо структури відрізняються, потрібно явно вказати відповідність стовпців.
+        \begin{CodeBox}[Копіювання з різною структурою]
+        \begin{minted}[breaklines]{sql}
+INSERT INTO TargetTable (TargetColumn1, TargetColumn2)
+SELECT SourceColumnA, SourceColumnB 
+FROM SourceTable;
+        \end{minted}
+        \end{CodeBox}
+
+        \item \textbf{INSERT INTO для таблиць з однаковою структурою в різних БД?}
+        
+        Для звернення до таблиці в іншій базі даних використовується повне ім'я, що складається з трьох частин: \texttt{database.schema.table}.
+        \begin{CodeBox}[Копіювання між БД]
+        \begin{minted}[breaklines]{sql}
+INSERT INTO TargetDB.dbo.TargetTable
+SELECT * FROM SourceDB.dbo.SourceTable;
+        \end{minted}
+        \end{CodeBox}
+        
+        \item \textbf{SELECT <...> INTO для таблиць з однаковою структурою в одній БД?}
+        
+        Конструкція \texttt{SELECT ... INTO} створює \textbf{нову} таблицю і копіює в неї результат запиту. Цільова таблиця не повинна існувати на момент виконання команди.
+        \begin{CodeBox}[Створення нової таблиці з даними]
+        \begin{minted}[breaklines]{sql}
+SELECT *
+INTO NewTable
+FROM ExistingTable
+WHERE condition;
+        \end{minted}
+        \end{CodeBox}
+
+        \item \textbf{SELECT <...> INTO для таблиць з однаковою структурою в різних БД?}
+        
+        Аналогічно до \texttt{INSERT}, для створення таблиці в іншій БД використовується повне ім'я.
+        \begin{CodeBox}[Створення нової таблиці в іншій БД]
+        \begin{minted}[breaklines]{sql}
+SELECT *
+INTO TargetDB.dbo.NewTable
+FROM SourceDB.dbo.ExistingTable;
+        \end{minted}
+        \end{CodeBox}
+        
+        \item \textbf{Поняття та синтаксис UPDATE?}
+        
+        Команда \texttt{UPDATE} використовується для зміни існуючих записів у таблиці.
+        \begin{CodeBox}[Синтаксис UPDATE]
+        \begin{minted}[breaklines]{sql}
+UPDATE table_name
+SET column1 = value1, column2 = value2
+WHERE condition;
+        \end{minted}
+        \end{CodeBox}
+        Ключове слово \texttt{WHERE} є критично важливим, оскільки без нього команда оновить \textbf{усі} рядки в таблиці.
+        
+        \item \textbf{Як виконати UPDATE, якщо умова змін відноситься до пов’язаної таблиці?}
+        
+        Існує два основних способи: використання підзапиту або \texttt{JOIN}.
+        \begin{CodeBox}[UPDATE з підзапитом]
+        \begin{minted}[breaklines]{sql}
+UPDATE Products
+SET Price = Price * 1.1
+WHERE CategoryID IN (SELECT ID FROM Categories WHERE Name = 'Electronics');
+        \end{minted}
+        \end{CodeBox}
+        \begin{CodeBox}[UPDATE з JOIN (синтаксис T-SQL)]
+        \begin{minted}[breaklines]{sql}
+UPDATE p
+SET p.Price = p.Price * 1.1
+FROM Products AS p
+JOIN Categories AS c ON p.CategoryID = c.ID
+WHERE c.Name = 'Electronics';
+        \end{minted}
+        \end{CodeBox}
+
+        \item \textbf{Поняття та синтаксис DELETE?}
+        
+        Команда \texttt{DELETE} використовується для видалення одного або кількох існуючих рядків з таблиці.
+        \begin{CodeBox}[Синтаксис DELETE]
+        \begin{minted}[breaklines]{sql}
+DELETE FROM table_name WHERE condition;
+        \end{minted}
+        \end{CodeBox}
+        Без умови \texttt{WHERE} команда видалить \textbf{усі} рядки з таблиці.
+        
+        \item \textbf{Як виконати DELETE, якщо умова видалення відноситься до пов’язаної таблиці?}
+        
+        Так само як і з \texttt{UPDATE}, можна використовувати підзапити або \texttt{JOIN}.
+        \begin{CodeBox}[DELETE з підзапитом]
+        \begin{minted}[breaklines]{sql}
+DELETE FROM Orders
+WHERE CustomerID IN (SELECT ID FROM Customers WHERE Country = 'Ukraine');
+        \end{minted}
+        \end{CodeBox}
+        \begin{CodeBox}[DELETE з JOIN (синтаксис T-SQL)]
+        \begin{minted}[breaklines]{sql}
+DELETE o
+FROM Orders AS o
+JOIN Customers AS c ON o.CustomerID = c.ID
+WHERE c.Country = 'Ukraine';
+        \end{minted}
+        \end{CodeBox}
+        
+    \end{enumerate}
+\end{document}
