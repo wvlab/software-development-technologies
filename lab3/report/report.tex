@@ -1,0 +1,297 @@
+\documentclass{article}
+\usepackage[top=2cm,bottom=2cm,left=3cm,right=3cm]{geometry}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{minted}
+\usepackage[most]{tcolorbox}
+\tcbuselibrary{minted,breakable}
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setdefaultlanguage{ukrainian}
+\setotherlanguages{english}
+\usepackage{Alegreya}
+\usepackage{FiraMono}
+\newfontfamily\cyrillicfont{Alegreya}
+\newfontfamily\cyrillicfontsf{Alegreya Sans}
+\newfontfamily\cyrillicfonttt{DejaVu Sans Mono}
+\usepackage{sciffi-python}
+\usepackage{sciffi-memo}
+
+\usemintedstyle{emacs}
+
+\newtcolorbox{CodeBox}[1][]{
+    breakable,
+    enhanced,
+    colback=gray!10,
+    colframe=gray!70,
+    fonttitle=\bfseries,
+    title=#1,
+    sharp corners,
+    boxrule=0.8pt,
+    top=2mm,
+    bottom=2mm,
+    left=2mm,
+    right=2mm,
+    fontupper=\footnotesize,
+}
+
+\newtcolorbox{ResultBox}[1][]{
+    breakable,
+    enhanced,
+    colback=gray!5,
+    colframe=gray!50,
+    fonttitle=\bfseries,
+    title=#1,
+    sharp corners,
+    boxrule=0.6pt,
+    top=1mm,
+    bottom=1mm,
+    left=2mm,
+    right=2mm,
+    fontupper=\footnotesize,
+}
+
+\begin{document}
+    \begin{titlepage}
+        \begin{center}
+            {\Large
+                МІНІСТЕРСТВО ОСВІТИ ТА НАУКИ УКРАЇНИ
+
+                НАЦІОНАЛЬНИЙ ТЕХНІЧНИЙ УНІВЕРСИТЕТ УКРАЇНИ
+                «КИЇВСЬКИЙ ПОЛІТЕХНІЧНИЙ ІНСТИТУТ ІМЕНІ ІГОРЯ СІКОРСЬКОГО»
+
+                ФАКУЛЬТЕТ ІНФОРМАТИКИ ТА ОБЧИСЛЮВАЛЬНОЇ ТЕХНІКИ
+
+                КАФЕДРА ІНФОРМАЦІЙНИХ СИСТЕМ ТА ТЕХНОЛОГІЙ
+            }
+
+
+            \vspace{60mm}
+            {\large
+                \textbf{ЗВІТ}
+
+                \vspace{5mm}
+
+                \textbf{До лабораторної роботи 3}
+
+                \vspace{5mm}
+
+                з дисципліни «Технології Розробки Програмного Забезпечення»
+            }
+
+            На тему «Музичний Магазин»
+
+            варіант \textnumero 14 (\textnumero 4)
+        \end{center}
+
+        \vfill
+        \hfill
+        \begin{minipage}[t]{0.35\textwidth}
+            \textbf{Виконав:}
+        \end{minipage}
+
+        \vfill
+
+        \begin{center}
+            {\bf
+                Київ
+
+                КПІ Ім. Ігоря Сікорського
+
+                2025
+            }
+        \end{center}
+    \end{titlepage}
+    \newpage
+
+    Тема: з’єднання та теоретико-множинні операції над відношенням.
+
+    Мета: вивчити команди формування запитів до кількох таблиць бази даних (JOIN).
+
+    Навички що будуть здобуті: вміння формувати такі запити до бази даних, що використовують з’єднання таблиць неявним та явним чином.
+
+    \section*{Хід виконання:}
+    \begin{sciffi}{python}
+        from pathlib import Path
+        from subprocess import run, PIPE
+        from collections.abc import Sequence
+        from contextlib import contextmanager
+        
+        @contextmanager
+        def env(name: str, *args: str):
+            print(f"\\begin{{{name}}}" + "".join(args))
+            try:
+                yield
+            finally:
+                print(f"\\end{{{name}}}")
+
+        def sh(*args: str | Path) -> str:
+            return run(
+                tuple(map(str, args)),
+                stdout=PIPE,
+                stderr=PIPE,
+                text=True,
+            ).stdout
+
+        scripts = Path("./scripts/")
+        # Find all .sql files and sort them numerically by their filename
+        sql_files = sorted(scripts.glob("*.sql"), key=lambda p: int(p.stem))
+
+        flow: Sequence[tuple[Path, Sequence[str]]] = [
+            (script, ("--no-echo",)) for script in sql_files
+        ]
+
+        for script, args in flow:
+            source = script.read_text(encoding="utf-8")
+            output = sh("tsqlexec", *args, script)
+
+            print(f"\\subsection*{{Запит з файлу: {script.name}}}")
+            with env("CodeBox", "[SQL Source]"):
+                with env("minted", "[breaklines,linenos]", "{sql}"):
+                    print(source, end="")
+            print()
+
+            if not output.strip():
+                continue
+
+            print("Result:")
+            with env("ResultBox", "[Output]"):
+                with env("minted", "[breaklines]", "{text}"):
+                    print(output, end="")
+            print("\\vspace{5mm}")
+
+    \end{sciffi}
+
+    \newpage
+    \section*{Контрольні питання}
+    \begin{enumerate}[label=\arabic*., leftmargin=*]
+        \item \textbf{Поняття операції вибірки.}
+        
+        Операція вибірки (Selection) — це одна з фундаментальних операцій реляційної алгебри. Вона дозволяє відфільтрувати рядки (кортежі) з таблиці, які задовольняють певній умові (предикату). В мові SQL ця операція реалізується за допомогою речення \texttt{WHERE}.
+        \begin{CodeBox}[Приклад вибірки]
+        \begin{minted}[breaklines]{sql}
+-- Вибрати всіх клієнтів з міста Київ
+SELECT * FROM Customers WHERE City = 'Київ';
+        \end{minted}
+        \end{CodeBox}
+
+        \item \textbf{Поняття операції проекції.}
+        
+        Операція проекції (Projection) — це операція реляційної алгебри, яка вибирає певні стовпці (атрибути) з таблиці, відкидаючи інші. В SQL вона реалізується переліком стовпців у частині \texttt{SELECT}.
+        \begin{CodeBox}[Приклад проекції]
+        \begin{minted}[breaklines]{sql}
+-- Вибрати лише імена та прізвища клієнтів
+SELECT FirstName, LastName FROM Customers;
+        \end{minted}
+        \end{CodeBox}
+        
+        \item \textbf{Поняття та синтаксис операції Декартів добуток.}
+        
+        Декартів добуток (Cartesian Product) — це операція, яка комбінує кожен рядок з однієї таблиці з кожним рядком з іншої таблиці. Результатом є таблиця, що містить усі можливі пари рядків. В SQL декартів добуток утворюється, коли таблиці перелічуються у \texttt{FROM} без умови з'єднання.
+        \begin{CodeBox}[Синтаксис Декартового добутку]
+        \begin{minted}[breaklines]{sql}
+SELECT * FROM Table1, Table2;
+-- Або з використанням CROSS JOIN
+SELECT * FROM Table1 CROSS JOIN Table2;
+        \end{minted}
+        \end{CodeBox}
+        Зазвичай це призводить до дуже великих результуючих наборів і використовується рідко, частіше за все — як основа для подальшої фільтрації.
+
+        \item \textbf{Властивості та застосування псевдонімів.}
+        
+        Псевдоніми (aliases) — це тимчасові імена, що надаються таблицям або стовпцям у межах одного запиту. Їх використовують для:
+        \begin{itemize}
+            \item \textbf{Скорочення довгих імен:} \texttt{FROM VeryLongTableName AS vlt}.
+            \item \textbf{Покращення читабельності:} \texttt{SELECT p.Name, c.CategoryName FROM Products AS p JOIN Categories AS c ON ...}.
+            \item \textbf{Уникнення неоднозначності:} коли з'єднуються таблиці з однаковими іменами стовпців (\texttt{Orders.ID}, \texttt{Customers.ID}).
+            \item \textbf{Самоз'єднання (Self-Join):} коли таблиця з'єднується сама з собою, псевдоніми є обов'язковими для розрізнення екземплярів таблиці.
+        \end{itemize}
+        
+        \item \textbf{Явний та неявний синтаксис.}
+        
+        Це стосується синтаксису з'єднання таблиць:
+        \begin{itemize}
+            \item \textbf{Неявний синтаксис (старий стиль):} Таблиці перелічуються у реченні \texttt{FROM} через кому, а умови з'єднання вказуються у \texttt{WHERE}.
+            \begin{CodeBox}[Неявний синтаксис]
+            \begin{minted}{sql}
+SELECT c.Name, o.OrderDate FROM Customers c, Orders o WHERE c.ID = o.CustomerID;
+            \end{minted}
+            \end{CodeBox}
+            \item \textbf{Явний синтаксис (стандарт ANSI SQL-92):} Використовується ключове слово \texttt{JOIN}, а умови з'єднання вказуються у реченні \texttt{ON}.
+            \begin{CodeBox}[Явний синтаксис]
+            \begin{minted}{sql}
+SELECT c.Name, o.OrderDate FROM Customers c JOIN Orders o ON c.ID = o.CustomerID;
+            \end{minted}
+            \end{CodeBox}
+        \end{itemize}
+        Явний синтаксис є кращим, оскільки він чітко відокремлює логіку з'єднання від логіки фільтрації.
+
+        \item \textbf{Синтаксис команди JOIN в пропозиції FROM.}
+        
+        Загальний синтаксис команди \texttt{JOIN} виглядає так:
+        \begin{CodeBox}[Загальний синтаксис JOIN]
+        \begin{minted}{sql}
+FROM table1
+[join_type] JOIN table2 ON join_condition
+...
+        \end{minted}
+        \end{CodeBox}
+        Де \texttt{join\_type} — це тип з'єднання (\texttt{INNER}, \texttt{LEFT}, \texttt{RIGHT}, \texttt{FULL}), а \texttt{join\_condition} — умова, за якою рядки з'єднуються.
+
+        \item \textbf{Які бувають види з’єднань.}
+        
+        Основні види з'єднань:
+        \begin{itemize}
+            \item \textbf{INNER JOIN (Внутрішнє з'єднання):} Повертає тільки ті рядки, для яких знайдено збіг в обох таблицях.
+            \item \textbf{LEFT JOIN (Ліве зовнішнє з'єднання):} Повертає всі рядки з лівої таблиці та відповідні рядки з правої. Якщо збігу немає, стовпці правої таблиці заповнюються \texttt{NULL}.
+            \item \textbf{RIGHT JOIN (Праве зовнішнє з'єднання):} Повертає всі рядки з правої таблиці та відповідні рядки з лівої. Якщо збігу немає, стовпці лівої таблиці заповнюються \texttt{NULL}.
+            \item \textbf{FULL OUTER JOIN (Повне зовнішнє з'єднання):} Повертає всі рядки з обох таблиць. Якщо збігу немає, відповідні стовпці заповнюються \texttt{NULL}.
+            \item \textbf{CROSS JOIN (Перехресне з'єднання):} Повертає декартів добуток таблиць.
+        \end{itemize}
+
+        \item \textbf{Поняття та синтаксис внутрішнього з’єднання.}
+        
+        \textbf{Поняття:} \texttt{INNER JOIN} повертає рядки, коли є збіг значень у з'єднуваних стовпцях обох таблиць. Це найпоширеніший тип з'єднання.
+        
+        \textbf{Синтаксис:}
+        \begin{CodeBox}[Синтаксис INNER JOIN]
+        \begin{minted}{sql}
+SELECT columns FROM table1 INNER JOIN table2 ON table1.column = table2.column;
+        \end{minted}
+        \end{CodeBox}
+        
+        \item \textbf{Поняття та синтаксис лівого зовнішнього з’єднання.}
+        
+        \textbf{Поняття:} \texttt{LEFT OUTER JOIN} повертає всі рядки з лівої таблиці та збіги з правої. Якщо для рядка з лівої таблиці не знайдено збігу в правій, результат для правої сторони буде містити \texttt{NULL}.
+        
+        \textbf{Синтаксис:}
+        \begin{CodeBox}[Синтаксис LEFT JOIN]
+        \begin{minted}{sql}
+SELECT columns FROM table1 LEFT JOIN table2 ON table1.column = table2.column;
+        \end{minted}
+        \end{CodeBox}
+
+        \item \textbf{Поняття та синтаксис правого зовнішнього з’єднання.}
+        
+        \textbf{Поняття:} \texttt{RIGHT OUTER JOIN} є протилежністю лівого з'єднання. Воно повертає всі рядки з правої таблиці та збіги з лівої. Якщо для рядка з правої таблиці не знайдено збігу, результат для лівої сторони буде містити \texttt{NULL}.
+        
+        \textbf{Синтаксис:}
+        \begin{CodeBox}[Синтаксис RIGHT JOIN]
+        \begin{minted}{sql}
+SELECT columns FROM table1 RIGHT JOIN table2 ON table1.column = table2.column;
+        \end{minted}
+        \end{CodeBox}
+
+        \item \textbf{Поняття та синтаксис повного зовнішнього з’єднання.}
+        
+        \textbf{Поняття:} \texttt{FULL OUTER JOIN} об'єднує результати \texttt{LEFT} та \texttt{RIGHT JOIN}. Воно повертає всі рядки з обох таблиць. Якщо для рядка з однієї таблиці немає збігу в іншій, відповідні стовпці заповнюються \texttt{NULL}.
+        
+        \textbf{Синтаксис:}
+        \begin{CodeBox}[Синтаксис FULL OUTER JOIN]
+        \begin{minted}{sql}
+SELECT columns FROM table1 FULL OUTER JOIN table2 ON table1.column = table2.column;
+        \end{minted}
+        \end{CodeBox}
+        
+    \end{enumerate}
+\end{document}
